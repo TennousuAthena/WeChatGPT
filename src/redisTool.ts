@@ -16,6 +16,7 @@ const pushList = async function(target:string, content: string){
   await (await getRedis()).rPush(target, content);
   await (await getRedis()).expire(target, memoryDuration);
   await (await getRedis()).incrBy('count_'+target, target.length)
+  await (await getRedis()).expire(target, memoryDuration);
 }
 
 
