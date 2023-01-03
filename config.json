@@ -1,0 +1,18 @@
+{
+    "redis":{
+        "url" : "redis://localhost:6379"
+    },
+
+    "openai":{
+        "org": "org-",
+        "key": "sk-"
+    },
+
+    "chat":{
+        "reply_on_error": "别急，休息一下喵",
+        "punc": ["。", "？", "！", "!", "?", ".", ";", "…", "，", ","],
+        "sign_of_question": ["吗"],
+        "memory_duration": 60,
+        "queue_max_token": 200
+    }
+}
