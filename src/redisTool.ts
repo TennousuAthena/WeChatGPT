@@ -6,17 +6,17 @@ import { createClient, RedisClientType } from 'redis';
 let redisClient: RedisClientType
 let isReady: boolean
 const memoryDuration: number = config.chat.memory_duration;
-const queueMaxToken: number = config.chat.queue_max_token;
 const redisOptions = {
   url:config.redis.url,
 }
 
 
 const pushList = async function(target:string, content: string){
+  console.log('RedisTool.pushList', target, content);
   await (await getRedis()).rPush(target, content);
   await (await getRedis()).expire(target, memoryDuration);
   await (await getRedis()).incrBy('count_'+target, target.length)
-  await (await getRedis()).expire(target, memoryDuration);
+  await (await getRedis()).expire('count_'+target, memoryDuration);
 }
 
 
@@ -44,6 +44,7 @@ const countToken = async function (target:string): Promise<number>{
 
 const popList = async function (target:string) {
   let delToken =  String(await (await getRedis()).lPop(target));
+  console.log('RedisTool.popList', target, delToken, delToken.length);
   await (await getRedis()).incrBy('count_'+target, -delToken.length)
 }
 
