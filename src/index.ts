@@ -78,13 +78,15 @@ async function getResponse(prompt:string){
   log.info('openAi.prompt', prompt);
   let reply:string;
   try {
-    const response = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: prompt,
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {"role": "system", "content": config.system_prompt.replace('{name}', config.chat.bot_name)},
+      ],
       max_tokens: 3072,
-      temperature: 0.5,
+      temperature: 0.6,
     });
-    reply = ''+response.data.choices[0].text?.trim();
+    reply = ''+response.data.choices[0].message?.content?.trim();
     log.info('openAi.response', reply);
     return reply;
   } catch (error) {
@@ -147,7 +149,7 @@ function commandProcess(msg: Message): string{
 }
 
 /**
- * 消息处理给
+ * 消息处理
  * @param msg 
  * @returns
  */
