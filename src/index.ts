@@ -20,10 +20,10 @@ import {
   WechatyBuilder,
   log,
 } from 'wechaty'
-import qrTerm from 'qrcode-terminal'
+const qrcode = require('qrcode-terminal');
 
 //OpenAI
-import { Configuration, OpenAIApi } from "openai";
+import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai";
 const configuration = new Configuration({
   organization: config.openai.org,
   apiKey: config.openai.key,
@@ -39,24 +39,19 @@ const bot = WechatyBuilder.build({
 
 });
 
-bot.on('scan',    onScan);
-bot.on('login',   onLogin);
-bot.on('logout',  onLogout);
-bot.on('message', onMessage);
-
 
 /**
  * 生成登录二维码
- * @param qrcode 二维码图片链接
+ * @param qrcode_url 二维码图片链接
  * @param status 
  */
-function onScan (qrcode: string, status: ScanStatus) {
+function onScan (qrcode_url: string, status: ScanStatus) {
   if (status === ScanStatus.Waiting || status === ScanStatus.Timeout) {
-    qrTerm.generate(qrcode, { small: true })  // show qrcode on console
+    qrcode.generate(qrcode_url, { small: true })  // show qrcode on console
 
     const qrcodeImageUrl = [
       'https://wechaty.js.org/qrcode/',
-      encodeURIComponent(qrcode),
+      encodeURIComponent(qrcode_url),
     ].join('')
 
     log.info('StarterBot', 'onScan: %s(%s) - %s', ScanStatus[status], status, qrcodeImageUrl)
@@ -74,22 +69,30 @@ function onLogout (user: Contact) {
   log.info('StarterBot', '%s logout', user)
 }
 
-async function getResponse(prompt:string){
+async function getResponse(prompt:string, sender_id:string): Promise<string> {
   log.info('openAi.prompt', prompt);
   let reply:string;
+  let messages: Array<ChatCompletionRequestMessage> = [{"role": "system", "content": config.chat.system_prompt.replace('{name}', config.chat.bot_name)},];
+  let message_list = await rTool.getList(sender_id);
+  
+  console.log(message_list);
+  for(let i = 0; i < message_list.length; i++){
+    messages.push({"role": message_list[i]['role'], "content": message_list[i]['content']});
+  }
+  console.log(messages);
   try {
     const response = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
-      messages: [
-        {"role": "system", "content": config.system_prompt.replace('{name}', config.chat.bot_name)},
-      ],
+      messages: messages,
       max_tokens: 3072,
       temperature: 0.6,
     });
     reply = ''+response.data.choices[0].message?.content?.trim();
+    await rTool.pushList(sender_id, {"role": "assistant", "content": reply});
     log.info('openAi.response', reply);
     return reply;
   } catch (error) {
+    log.error('openAi.error', error);
     return config.chat.reply_on_error;
   }
 }
@@ -108,24 +111,24 @@ function removeMention(s: string): string {
  * @param msg  Message
  */
 async function onMessage (msg: Message) {
+  log.info('KakennBot.gotMessage', msg.toString())
   if (msg.type() === bot.Message.Type.Text) {
-    log.info('KakennBot.gotMessage', msg.toString())
     if(!msg.self() && (msg.room() && await msg.mentionSelf()) || !msg.room()){
-      let rsp:string;
-      let talker:string = <string>msg.talker().id;
-      let m:string = messageProcess(msg.text());
-      if(commandProcess(msg)){
-        rsp = commandProcess(msg);
-        await msg.say(rsp);
+      let bot_response:string;
+      let sender_id:string = <string>msg.talker().id;
+      let message_got:string = messageProcess(msg.text());
+      if(commandProcess(msg)){    //命令识别
+        bot_response = commandProcess(msg);
+        await msg.say(bot_response);
         return;
       }
-      while(await rTool.countToken(talker) > config.chat.queue_max_token){
-        console.log(await rTool.countToken(talker))
-        await rTool.popList(talker);
+      while(await rTool.countToken(sender_id) > config.chat.queue_max_token){ //队列长度限制
+        console.log(await rTool.countToken(sender_id))
+        await rTool.popList(sender_id);
       }
-      await rTool.pushList(talker, m);
-      rsp = await getResponse(rTool.ListToStr(await rTool.getList(talker)));
-      await msg.say(rsp)
+      await rTool.pushList(sender_id, {"role": "user", "content": msg.text()});
+      bot_response = await getResponse(msg.text(), sender_id);
+      await msg.say(bot_response)
     }
   }
 }
@@ -156,14 +159,6 @@ function commandProcess(msg: Message): string{
 function messageProcess(msg: string):string{
   log.info('msgProcess.before', msg);
   msg = removeMention(msg.trim());
-  if(config.chat.punc.indexOf(msg[msg.length - 1]) == -1){
-    if(config.chat.sign_of_question.indexOf(msg[msg.length - 1]) == -1){
-      //不是疑问句
-      msg = msg + "。"
-    }else{
-      msg = msg + "?"
-    }
-  }
   log.info('msgProcess.after', msg);
   return msg;
 }
@@ -172,3 +167,9 @@ function messageProcess(msg: string):string{
 bot.start()
     .then(() => log.info('KakennBot', 'Starter Bot Started.'))
     .catch(e => log.error('KakennBot', e))
+
+
+bot.on('scan',    onScan);
+bot.on('login',   onLogin);
+bot.on('logout',  onLogout);
+bot.on('message', onMessage);

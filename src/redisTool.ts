@@ -1,5 +1,5 @@
 const config = require('../config.json');
-
+import { ChatCompletionRequestMessage } from "openai";
 //Redis
 import { createClient, RedisClientType } from 'redis';
 
@@ -11,9 +11,9 @@ const redisOptions = {
 }
 
 
-const pushList = async function(target:string, content: string){
+const pushList = async function(target:string, content: ChatCompletionRequestMessage){
   console.log('RedisTool.pushList', target, content);
-  await (await getRedis()).rPush(target, content);
+  await (await getRedis()).rPush(target, JSON.stringify(content));
   await (await getRedis()).expire(target, memoryDuration);
   await (await getRedis()).incrBy('count_'+target, target.length)
   await (await getRedis()).expire('count_'+target, memoryDuration);
@@ -26,7 +26,12 @@ const deleteList = async function(target:string){
 }
 
 const getList = async function (target:string){
-  return await (await getRedis()).lRange(target, 0, -1);
+  let list = await (await getRedis()).lRange(target, 0, -1);
+  for(let i = 0; i < list.length; i++){
+    list[i] = JSON.parse(list[i]);
+  }
+  // console.log('RedisTool.getList', target, list);
+  return list;
 }
 
 const ListToStr = function (list: string[]){
