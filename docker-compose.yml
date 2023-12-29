@@ -8,11 +8,11 @@ services:
       - redis-data:/data
 
   bun:
-    image: thedroneely/bun:edge
+    image: oven/bun:1
     volumes:
       - .:/app
     working_dir: /app
-    command: bun run your-script.ts
+    command: bun run src/index.ts
     depends_on:
       - redis
 
