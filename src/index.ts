@@ -25,7 +25,6 @@ const openai = new OpenAI({
 });
 
 import rTool from "./redisTool";
-import { ChatCompletionSystemMessageParam } from "openai/resources/chat/completions";
 
 const bot = WechatyBuilder.build({
   name: "KakennBot",
@@ -69,7 +68,7 @@ function onLogout(user: Contact) {
 async function getResponse(prompt: string, sender_id: string): Promise<string> {
   log.info("openAi.prompt", prompt);
   let reply: string;
-  let messages: Array<ChatCompletionSystemMessageParam> = [
+  let messages: Array<any> = [
     {
       role: "system",
       content: config.chat.system_prompt.replace(
