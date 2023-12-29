@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  bun:
+    image: thedroneely/bun:edge
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: bun run your-script.ts
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
