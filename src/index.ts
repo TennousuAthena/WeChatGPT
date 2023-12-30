@@ -9,22 +9,19 @@
  * | |\  \ (_| |   <  __/ | | | | | | | |_\ \| |     | | .___/ / | \__/\ | | | (_| | |_| |_) | (_) | |_
  * \_| \_/\__,_|_|\_\___|_| |_|_| |_|  \____/\_|     \_/ \____/   \____/_| |_|\__,_|\__|_.__/ \___/ \__|
  */
-//Config
-const config = require("../config.json");
 
-//Wechaty
 import { Contact, Message, ScanStatus, WechatyBuilder, log } from "wechaty";
+import { OpenAI } from "openai";
+import rTool from "./redisTool";
+import { FileBox } from "file-box";
+const config = require("../config.json");
 const qrcode = require("qrcode-terminal");
 
-//OpenAI
-import { OpenAI } from "openai";
 const openai = new OpenAI({
   baseURL: config.openai.baseURL,
   organization: config.openai.org,
   apiKey: config.openai.key,
 });
-
-import rTool from "./redisTool";
 
 const bot = WechatyBuilder.build({
   name: "KakennBot",
@@ -110,7 +107,7 @@ async function getResponse(prompt: string, sender_id: string): Promise<string> {
  * @returns
  */
 function removeMention(s: string): string {
-  return s.replace(/@\S+\s/g, "");
+  return s.replace(/@\S+\s/g, "").replace("@Kakenn", "");
 }
 
 /**
@@ -160,9 +157,24 @@ function commandProcess(msg: Message): string {
       rTool.deleteList(msg.talker().id);
       return "记忆已清除";
     }
+    if (m.indexOf("/画") == 0) {
+      commandDraw(m.replace("/画", "").trim(), msg);
+      return "正在绘画，请稍等片刻";
+    }
     return "未知指令";
   }
   return "";
+}
+
+async function commandDraw(prompt: string, msg: Message): Promise<void> {
+  const response: OpenAI.ImagesResponse = await openai.images.generate({
+    model: "dall-e-3",
+    prompt: prompt,
+    n: 1,
+    size: "1792x1024",
+  });
+  await msg.say(FileBox.fromUrl(response.data[0].url));
+  return;
 }
 
 /**
@@ -186,3 +198,10 @@ bot.on("scan", onScan);
 bot.on("login", onLogin);
 bot.on("logout", onLogout);
 bot.on("message", onMessage);
+
+bot.on("friendship", async (friend) => {
+  log.info("KakennBot", "onFriendship");
+  if (friend.type() === bot.Friendship.Type.Receive) {
+    await friend.accept();
+  }
+});
