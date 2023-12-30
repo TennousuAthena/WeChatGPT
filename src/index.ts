@@ -123,7 +123,6 @@ async function onMessage(msg: Message) {
     ) {
       let bot_response: string;
       let sender_id: string = <string>msg.talker().id;
-      let message_got: string = messageProcess(msg.text());
       if (commandProcess(msg)) {
         //命令识别
         bot_response = commandProcess(msg);
@@ -137,8 +136,9 @@ async function onMessage(msg: Message) {
         console.log(await rTool.countToken(sender_id));
         await rTool.popList(sender_id);
       }
-      await rTool.pushList(sender_id, { role: "user", content: msg.text() });
-      bot_response = await getResponse(msg.text(), sender_id);
+      let message_got: string = messageProcess(msg.text());
+      await rTool.pushList(sender_id, { role: "user", content: message_got });
+      bot_response = await getResponse(message_got, sender_id);
       await msg.say(bot_response);
     }
   }
@@ -150,7 +150,7 @@ async function onMessage(msg: Message) {
  * @returns
  */
 function commandProcess(msg: Message): string {
-  let m: string = msg.text();
+  let m: string = messageProcess(msg.text());
   if (m.indexOf("/") == 0) {
     log.info("KakennBot.gotCommand", m);
     if (m.indexOf("/clear") == 0) {
