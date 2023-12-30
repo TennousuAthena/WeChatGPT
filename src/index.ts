@@ -123,9 +123,9 @@ async function onMessage(msg: Message) {
     ) {
       let bot_response: string;
       let sender_id: string = <string>msg.talker().id;
-      if (commandProcess(msg)) {
-        //命令识别
-        bot_response = commandProcess(msg);
+      let commandResponse: string = commandProcess(msg);
+      if (commandResponse) {
+        bot_response = commandResponse;
         await msg.say(bot_response);
         return;
       }
